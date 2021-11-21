@@ -10,3 +10,43 @@
 // R0 >= 0, R1 >= 0, and R0*R1 < 32768.
 
 // Put your code here.
+
+//create a counter and sum variable both set to zero
+@sum
+M=0
+@counter
+M=0
+//while counter < R0
+(LOOP)
+    
+    // set D = R0 - counter
+    @counter
+    D=M
+    @R0
+    D=M-D
+    
+    // jump to end if R0 == counter
+    @END
+    D;JEQ
+
+    // add R1 to sum
+    @R1
+    D=M
+    @sum
+    M=D+M
+
+    // increment counter
+    @counter
+    M=M+1
+
+    //jump to top of loop
+    @LOOP
+    0;JMP
+
+(END)
+
+// write sum to R2
+@sum
+D=M
+@R2
+M=D
