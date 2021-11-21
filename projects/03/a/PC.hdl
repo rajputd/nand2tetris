@@ -16,5 +16,17 @@ CHIP PC {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    //when to load data into register
+    Or(a=reset, b=load, out=resetOrLoad);
+    Or(a=resetOrLoad, b=inc, out=resetOrLoadOrInc);
+
+
+    Inc16(in=registerOut, out=incremented);
+    Mux16(a=registerOut, b=incremented, sel=inc, out=incOut);
+
+    Mux16(a=incOut, b=in, sel=load, out=loadOut);
+    Mux16(a=loadOut, b=false, sel=reset, out=resetOut);
+    Register(in=resetOut, load=resetOrLoadOrInc, out=registerOut);
+
+    Or16(a=registerOut, b=false, out=out);
 }
