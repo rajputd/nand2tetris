@@ -39,5 +39,72 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+
+    //decoding helpers
+    Or(a=instruction[15], b=false, out=isCInstruction);
+    Not(in=instruction[15], out=isAInstruction);
+    Or16(a=instruction, b=false, out[0..14]=AInstructionValue);
+    Or16(a=instruction, b=false, out[0]= j3, out[1]= j2, out[2]= j1, out[3]= d3, out[4]= d2, out[5]= d1, out[6]= c6, out[7]= c5, out[8]= c4, out[9]= c3, out[10]= c2, out[11]= c1, out[12]=aSegment);
+
+    //load A register
+    And(a=d1, b=isCInstruction, out=loadAWithAlu);
+    Mux16(a=instruction, b=aluOutput, sel=loadAWithAlu, out[0..14]=ARegisterIn);
+    Or(a=loadAWithAlu, b=isAInstruction, out=shouldLoadA);
+    ARegister(in[0..14]=ARegisterIn, in[15]=false, load=shouldLoadA, out=ARegisterOut);
+
+    //load D register
+    And(a=d2, b=isCInstruction, out=shouldWriteToDRegister);
+    DRegister(in=aluOutput, load=shouldWriteToDRegister, out=DRegisterOut);
+
+    //select between A or M
+    Mux16(a=ARegisterOut, b=inM, sel=aSegment, out=AorMOut);
+
+    //load ALU
+    ALU(x=DRegisterOut, y=AorMOut, zx=c1, nx=c2, zy=c3, ny=c4, f=c5, no=c6, out=aluOutput, zr=ALUOutEquals0, ng=ALUOutNegative);
+
+    //JMP logic helpers
+    Not(in=ALUOutEquals0, out=ALUOutNotEquals0);
+    Not(in=ALUOutNegative, out=ALUOutPositive);
+
+    //JGT
+    And(a=ALUOutNotEquals0, b=ALUOutPositive, out=ALUOutNotZeroAndPostive);
+    And(a=ALUOutNotZeroAndPostive, b=j3, out=JGT);
+
+    //JEQ
+    And(a=ALUOutEquals0, b=j2, out=JEQ);
+
+    //JGE
+    Or(a=ALUOutEquals0, b=ALUOutPositive, out=ALUOutZeroOrPositive);
+    And(a=ALUOutZeroOrPositive, b=j3, out=JGEIntermediate);
+    And(a=JGEIntermediate, b=j2, out=JGE);
+
+    //JLT
+    And(a=ALUOutNotEquals0, b=ALUOutNegative, out=ALUOutNotEquals0AndNegative);
+    And(a=ALUOutNotEquals0AndNegative, b=j1, out=JLT);
+
+    //JNE
+    And(a=ALUOutNotEquals0, b=j3, out=JNEIntermediate);
+    And(a=JNEIntermediate, b=j1, out=JNE);
+
+    //JLE
+    Or(a=ALUOutNegative, b=ALUOutEquals0, out=ALUOutEquals0OrNegative);
+    And(a=ALUOutEquals0OrNegative, b=j1, out=JLEIntermediate);
+    And(a=JLEIntermediate, b=j2, out=JLE);
+
+    //JMP
+    And(a=j3, b=j2, out=j2And1);
+    And(a=j2And1, b=j1, out=JMP);
+
+    //load PC logic
+    Or8Way(in[0]=JGT, in[1]=JEQ, in[2]=JGE, in[3]=JLT, in[4]=JNE, in[5]=JLE, in[6]=JMP, in[7]=false, out=jmpConditionsPass);
+    And(a=jmpConditionsPass, b=isCInstruction, out=shouldJMP);
+    Not(in=shouldJMP, out=shouldIncrement);
+
+    //load PC
+    PC(in=ARegisterOut, load=shouldJMP, inc=shouldIncrement, reset=reset, out[0..14]=pc);
+
+    //outputs
+    Or16(a=ARegisterOut, b=false, out[0..14]=addressM);
+    Or16(a=aluOutput, b=false, out=outM);
+    And(a=d3, b=isCInstruction, out=writeM);
 }

@@ -22,10 +22,34 @@
  * Screen and Keyboard chip specifications given in the book.
  */
 
+// 0b000000000000000 = RAM START = 0
+// 0b011111111111111 = RAM END = 16383
+// 0b100000000000000 = SCREEN START = 16384
+// 0b101111111111111 = SCREEN END = 24575
+// 0b110000000000000 = Keyboard
+
 CHIP Memory {
     IN in[16], load, address[15];
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    //helpers
+    Or(a=address[14], b=false, out=MSBSet);
+    Or(a=address[13], b=false, out=secondMSBSet);
+    Not(in=secondMSBSet, out=secondMSBNotSet);
+
+    //select which one to select
+    Not(in=address[14], out=selectRam);
+    And(a=MSBSet, b=secondMSBNotSet, out=selectScreen);
+
+    //decide when to load
+    And(a=selectRam, b=load, out=loadRam);
+    And(a=selectScreen, b=load, out=loadScreen);
+    
+    RAM16K(in=in, load=loadRam, address=address[0..13], out=ramOut);
+    Screen(in=in, load=loadScreen, address=address[0..12], out=screenOut);
+    Keyboard(out=kbdOut);
+
+    Mux4Way16(a=ramOut, b=ramOut, c=screenOut, d=kbdOut, sel=address[13..14], out=out);
+
 }
